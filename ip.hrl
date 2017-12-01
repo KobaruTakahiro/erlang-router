@@ -1,0 +1,15 @@
+-record(ip4Header,{
+    version,
+    headerLen,
+    service,
+    totalLen,
+    identification,
+    flags,
+    fragment,
+    ttl,
+    protocol,
+    checksum,
+    sourceAddress,
+    destAddress,
+    options
+}).
