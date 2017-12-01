@@ -47,33 +47,32 @@ sendMessage(ArpProc, Buf) ->
     ArpProc ! {request, Data},
     true.
 
+% parse binary data
 parseBuf(Buf) ->
     io:format("buf :~w~n ", [Buf]),
     {Ethernet, IPLayerBuf} = parseEthernet(Buf),
-    IPLayer = case Ethernet#ethernetHeader{type} of
-        TYPE_IPv4 ->
-            parseIPv4(IPLayerBuf);
-        TYPE_ARP ->
-            parseARP(IPLayerBuf)
+    IPLayer = case Ethernet#ethernetHeader.type of
+        ?TYPE_IPv4 ->
+            {IPHeader, _} = parseIPv4(IPLayerBuf),
+            io:format("ip header ~w~n", [IPHeader]);
+        ?TYPE_ARP ->
+            {_, _} = parseARP(IPLayerBuf)
     end,
     io:format("ip layer : ~w~n ", [IPLayer]).
 
+% parse ethernet frame
 parseEthernet(Buf) ->
     <<DestMacAddress:48, SourceMacAddress:48, Type:16, Data/bitstring>> = Buf,
 
-    EtherHeader = #ethernetHeader{
+    Ethernet = #ethernetHeader{
         sourceMacAddress=binary:encode_unsigned(SourceMacAddress),
         destMacAddress=binary:encode_unsigned(DestMacAddress),
         type=Type
     },
 
-    io:format("ethernet header  : ~w~n", [EtherHeader]),
-    io:format("TYPE IPv4  : ~w~n", [?TYPE_IPv4 == Type]),
-    io:format("TYPE ARP  : ~w~n", [?TYPE_ARP == Type]),
-    io:format("IPLayer : ~w~n", [Data]),
-
     {Ethernet, Data}.
 
+% parse IP v4 header
 parseIPv4(Buf) ->
     <<Version:4, HeaderLen:4, Service:8, TotalLen:16,
         Identification:16, Flags:3, Fragment:13,
@@ -84,8 +83,10 @@ parseIPv4(Buf) ->
         version=Version, headerLen=HeaderLen, service=Service, totalLen=TotalLen,
         identification=Identification, flags=Flags, fragment=Fragment,
         ttl=Ttl, protocol=Protocol, checksum=Checksum,
-        sourceAddress=SourceAddress, destAddress=DestAddress
+        sourceAddress=binary:encode_unsigned(SourceAddress), destAddress=binary:encode_unsigned(DestAddress)
     },
+    {IPHeader, Data}.
 
 parseARP(Buf) ->
-    <<DestMacAddress:48, SourceMacAddress:48, Type:16, IPLayerBuf/bitstring>> = Buf,
+    io:format("buf ~w~n", [Buf]),
+    true.
