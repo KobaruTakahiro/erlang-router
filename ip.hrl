@@ -11,5 +11,6 @@
     checksum,
     sourceAddress,
     destAddress,
-    options
+    options,
+    binary
 }).
