@@ -9,6 +9,9 @@
 -define(TYPE_FRAME_RELAY, 16#000F).
 -define(TYPE_ATM, 16#0010).
 
+-define(ARP_TYPE_STATIC, static).
+-define(ARP_TYPE_DYNAMIC, dynamic).
+
 -record(arpHeader, {
     hardwareType,
     protocol,
@@ -22,6 +25,8 @@
 }).
 
 -record(arpTable, {
+    sourceIpAddress,
     macAddress,
-    ipAddress
+    ipAddress,
+    type
 }).
