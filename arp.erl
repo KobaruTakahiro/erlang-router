@@ -7,22 +7,19 @@
 -include("arp.hrl").
 
 main(FD, ArpTable, Interfaces) ->
-    io:format("start arp process ~n"),
+    io:format("arp:main(FD, ARPTable, Interface) ~n"),
     receive
         {From, requestMacAddress, RequestIp} ->
-            io:format("request IP address :~p~n",[RequestIp]),
+            io:format("arp:main receive {From, requestMacAddress, RequestIp} ~n"),
             Dest = lists:filter(fun(Elm) -> searchIPARPTable(Elm, RequestIp) end, ArpTable),
             if
                 Dest == [] ->
-                    io:format(" -------- dest empty ~n"),
                     broadcastARP(FD, RequestIp, Interfaces),
                     true;
                 length(Dest) == 1 ->
-                    io:format(" ------------ dest is ~w~n", [Dest]),
                     From ! {responseMacAddress, Dest},
                     true;
                 true ->
-                    io:format(" ----------- not ~w~n ", [Dest]),
                     [DestOne |_ ] = Dest,
                     From ! {responseMacAddress, [DestOne]},
                     false
@@ -30,15 +27,11 @@ main(FD, ArpTable, Interfaces) ->
 
             main(FD, ArpTable, Interfaces);
 
-        {From, responseMessage, Ethernet, ARPHeader} ->
-            io:format("response arp message ethernet  : ~w~n", [Ethernet]),
-            io:format("response arp message arp header : ~w~n", [ARPHeader]),
-
+        {From, responseMessage, _, ARPHeader} ->
             AppendTable = #arpTable{
                             macAddress=binary_to_list(ARPHeader#arpHeader.sourceMacAddress),
                             ipAddress=binary_to_list(ARPHeader#arpHeader.sourceIPAddress)
                           },
-            io:format("arp table : ~w~n", [AppendTable]),
             self() ! {From, responseMacAddress, AppendTable#arpTable.macAddress},
             IsARPTable = lists:any(fun(Elm) -> existARPTable(Elm, AppendTable) end, ArpTable),
             if
@@ -47,25 +40,20 @@ main(FD, ArpTable, Interfaces) ->
                 true ->
                     ResultArpTable = lists:append([ArpTable, [AppendTable]])
             end,
-            io:format(" result arp table : ~w~n", [ResultArpTable]),
             main(FD, ResultArpTable, Interfaces);
 
         {From, responseMacAddress, MacAddress} ->
-            io:format("responseMacAddress ~n"),
-            io:format(" mac address  : ~w~n", [MacAddress]),
             Dest = lists:filter(fun(Elm) -> searchMacARPTable(Elm, MacAddress) end, ArpTable),
             if
                 length(Dest) == 1 ->
                     From ! {responseMacAddress, Dest},
                     true;
                 true ->
-                    io:format(" ----------- not ~w~n ", [Dest]),
                     false
             end,
             main(FD, ArpTable, Interfaces);
 
-        Other ->
-            io:format("arp main not supported : ~p~n",[Other]),
+        _ ->
             main(FD, ArpTable, Interfaces)
     end.
 
@@ -78,8 +66,7 @@ existARPTable(ArpTable, AppendTable) ->
     end.
 
 searchIPARPTable(Elm, RequestIp) ->
-    io:format(" search ip address arp table : ~w~n", [Elm#arpTable.ipAddress]),
-    io:format(" search ip address request address : ~w~n", [RequestIp]),
+    io:format("arp:searchIPARPTable(Elm, RequestIp) ~n"),
     if
         Elm#arpTable.ipAddress =:= RequestIp ->
             true;
@@ -109,7 +96,7 @@ broadcastARPRequest(_, IPAddress, Interface) ->
     [{flags, _}, {hwaddr, Hwaddr}, {addr, Addr}, {netmask, NetMask}, {broadaddr, _}] = Eopt,
     NetMaskAddress = lists:zip3(tuple_to_list(Addr), tuple_to_list(NetMask), IPAddress),
     io:format("list :  ~w~n", [NetMaskAddress]),
-    Func = fun(Elm) -> main:matchNetMaskAddress(Elm) end,
+    Func = fun(Elm) -> interface:matchNetMaskAddress(Elm) end,
     IsNetMask = lists:all(Func, NetMaskAddress),
     if
         IsNetMask ->
